@@ -37,3 +37,5 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+app/cdi_data.csv
+data/U.S._Chronic_Disease_Indicators__CDI_.csv

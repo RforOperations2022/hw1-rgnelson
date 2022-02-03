@@ -1,0 +1,66 @@
+---
+title: "Data Preparation"
+author: "Bobby Nelson"
+date: "2/3/2022"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load the Full Data
+
+The data for this application is the CDC's published data on United States
+Chronic Disease Indicators (CDI) found [here](https://catalog.data.gov/dataset/u-s-chronic-disease-indicators-cdi).
+This dataset provides a detailed breakdown of U.S. chronic disease indicators 
+by state. There is a lot of extra detail in the data that should be simplified
+before loading into the Shiny application. You can read more about the data
+[here](./rr6401.pdf).
+
+```{r}
+full.data <- read_csv("U.S._Chronic_Disease_Indicators__CDI_.csv")
+```
+
+# Subset the Data
+
+We only want a small subset of the features in the data.
+
+```{r}
+subset.data <- full.data %>%
+  select(LocationAbbr,
+         Topic,
+         Question,
+         DataValue,
+         DataValueType,
+         StratificationCategory1,
+         Stratification1)
+
+subset.data <- subset.data %>%
+  mutate(LocationAbbr = factor(LocationAbbr),
+         Topic = factor(Topic),
+         Question = factor(Question),
+         DataValue = as.numeric(DataValue),
+         DataValueType = factor(DataValueType),
+         StratificationCategory1 = factor(StratificationCategory1),
+         Stratification1 = factor(Stratification1))
+```
+
+# Save the Subset
+
+Now save the subset data for the application to use.
+
+```{r}
+write_csv(subset.data, "../app/cdi_data.csv")
+```
+
+```{r}
+saveRDS(subset.data, "../app/cdi_data.rds")
+```
+
+

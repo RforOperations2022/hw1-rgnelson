@@ -16,9 +16,14 @@ state.list <- levels(data$state)
 
 # Define UI for Chronic Disease Indicators
 ui <- fluidPage(
+    
+    # set slider style
+    # from https://stackoverflow.com/a/36908030
+    tags$style(HTML(".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: darkred}")),
 
     # Application title
     titlePanel("Chronic Disease Mortality in the United States"),
+    br(), # add some vertical space
     
     # User input and US Map section
     fluidRow(
@@ -173,6 +178,7 @@ server <- function(input, output) {
             ylab("Total Mortality per Million")
     })
     
+    # data table output for state/question level mortality data
     output$state.table <- DT::renderDataTable(
         DT::datatable(data = data.state.subset(),
                       options = list(pageLength = 10),

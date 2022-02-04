@@ -58,8 +58,10 @@ subset.data <- subset.data %>%
   filter(DataValueType == "Crude Rate",
          grepl("Mortality|mortality", Question),
          StratificationCategory1 %in% c("Overall", "Gender"),
-         state != "US",
-         state != "DC")
+         state != "US", # not a state
+         state != "DC", # not a state (technically)
+         state != "VI", 
+         YearStart != "2018") # a bunch of issues with 2018 data integrity
 
 subset.data <- subset.data %>%
   mutate(DataValue = ifelse(DataValueUnit=="cases per 100,000",
@@ -80,12 +82,3 @@ write_csv(subset.data, "../app/cdi_data.csv")
 ```{r}
 saveRDS(subset.data, "../app/cdi_data.rds")
 ```
-
-```{r}
-subset.data %>%
-  filter(Topic == "Alcohol") %>%
-  group_by(Topic, state, Stratification1) %>%
-  summarize(total = sum(DataValue, na.rm=TRUE))
-```
-
-

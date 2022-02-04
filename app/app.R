@@ -5,10 +5,10 @@ library(shiny)
 library(ggplot2)
 library(usmap)
 library(DT)
+library(stringr)
 
 # read the data
 data <- readRDS(file="cdi_data.rds")
-#data <- complete(data, state, YearStart)
 min.year <- min(as.numeric(levels(data$YearStart))[data$YearStart])
 max.year <- max(as.numeric(levels(data$YearStart))[data$YearStart])
 topic.list <- unique(data$Topic)
@@ -18,8 +18,9 @@ state.list <- levels(data$state)
 ui <- fluidPage(
 
     # Application title
-    titlePanel("Chronic Disease Indicators in the United States"),
+    titlePanel("Chronic Disease Mortality in the United States"),
     
+    # User input and US Map section
     fluidRow(
              # Main user input panel
              column(4, 
@@ -49,15 +50,27 @@ ui <- fluidPage(
                                     sep = "",
                                     width = "100%")),
                     
-                    plotOutput("us.map"),
-                    
-                    tabsetPanel(
-                        tabPanel("Plot", plotOutput("us.barplot")),
-                        tabPanel("Table", DT::dataTableOutput("us.table"),
-                                 downloadButton("download.button"))
-                    ))
-             
-             
+                    plotOutput("us.map"))
+    ),
+    
+    # Bar plots and tabular output
+    fluidRow(
+        column(6,
+               h2("State Data"),
+               tabsetPanel(
+                   tabPanel("Bar Plot", plotOutput("state.barplot")),
+                   tabPanel("Time Trend", plotOutput("state.time.trend")),
+                   tabPanel("Table", DT::dataTableOutput("state.table"),
+                            downloadButton("state.download.button"))
+               )),
+        # US bar plot and table
+        column(6,
+               h2("United States Data"),
+               tabsetPanel(
+                   tabPanel("Plot", plotOutput("us.barplot")),
+                   tabPanel("Table", DT::dataTableOutput("us.table"),
+                            downloadButton("us.download.button"))
+               ))
     )
 )
 
@@ -73,7 +86,7 @@ server <- function(input, output) {
                    YearStart == paste0(input$year),
                    Stratification1 == "Overall") %>%
             group_by(Topic, state, Stratification1) %>%
-            summarize(total = sum(DataValue, na.rm=TRUE)) %>%
+            summarize(total = sum(DataValue, na.rm=FALSE)) %>%
             mutate(selected.state = ifelse(state == input$state,
                                            TRUE, FALSE))
     })
@@ -101,22 +114,22 @@ server <- function(input, output) {
     data.state.subset <- reactive({
         req(input$state, input$cdi)
         data %>% 
-            filter(if (input$state != "All") (state == input$state)) %>%
+            filter(state == input$state) %>%
             filter(Topic == input$cdi,
-                   YearStart == paste0(input$year)) %>%
-            group_by(Topic, state, Stratification1) %>%
-            summarize(total = sum(DataValue, na.rm=TRUE))
+                   Stratification1 == "Overall") %>%
+            group_by(Question, state, YearStart) %>%
+            summarize(total = sum(DataValue, na.rm=FALSE))
     })
     
     
-    # draw map of the US with heatmap by CDI (with overall stratification)
+    # draw map of the US with heatmap by topic (with overall stratification)
     output$us.map <- renderPlot({
         plot_usmap(data = filter(data.topic.subset(), Stratification1 == "Overall"), 
                    values = "total") + 
                    scale_fill_continuous(name = "Total Mortality per million",
                                          low = "white",
                                          high = "darkred",
-                                         na.value = "blue",
+                                         na.value = "lightgray",
                                          label=scales::comma) +
             theme(legend.position = "right")
     })
@@ -133,7 +146,40 @@ server <- function(input, output) {
             theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
     })
     
-    # data table output
+    # draw bar plot at the state level for each question
+    output$state.barplot <- renderPlot({
+        req(input$year)
+        ggplot(data = data.state.subset() %>% filter(YearStart == input$year),
+               aes(x = Question, y = total)) +
+            geom_bar(stat = "identity", width = 0.2) +
+            xlab("Chronic Disease") +
+            ylab("Mortality per Million") +
+            guides(fill = "none") + 
+            ggtitle(paste0("Year: ", input$year)) + 
+            if (input$state != "All") {
+                scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+            }
+    })
+    
+    # draw a lineplot over time at the state level
+    output$state.time.trend <- renderPlot({
+        ggplot(data = data.state.subset() %>%
+                   group_by(state, YearStart) %>%
+                   summarize(total = sum(total)),
+               aes(x = YearStart, y = total)) +
+            geom_line(group = 1, color = "darkred", size = 1, linetype = "dashed") + 
+            geom_point(group = 1, color = "darkred", size = 3) +
+            xlab("Year") +
+            ylab("Total Mortality per Million")
+    })
+    
+    output$state.table <- DT::renderDataTable(
+        DT::datatable(data = data.state.subset(),
+                      options = list(pageLength = 10),
+                      rownames = FALSE)
+    )
+    
+    # data table output for US/Topic level mortality data
     output$us.table <- DT::renderDataTable(
         DT::datatable(data = data.topic.subset.pretty(),
                       options = list(pageLength = 10),
@@ -143,8 +189,8 @@ server <- function(input, output) {
     # data table output for chronic disease breakdown per topic
     output$cdi.levels <- renderTable(data.cdi.levels())
     
-    # download button
-    output$download.button <- downloadHandler(
+    # download button for US/Topic level mortality data
+    output$us.download.button <- downloadHandler(
         # from documentation
         filename = function() {
             paste(input$cdi, "_mortality_", str_replace_all(Sys.time(), ":|\ ", "_"), 
@@ -152,6 +198,18 @@ server <- function(input, output) {
         },
         content = function(file) {
             write.csv(data.topic.subset.pretty(), file)
+        }
+    )
+    
+    # download button for state level mortality data
+    output$state.download.button <- downloadHandler(
+        # from documentation
+        filename = function() {
+            paste(input$cdi, "_state_mortality_", str_replace_all(Sys.time(), ":|\ ", "_"), 
+                  ".csv", sep = "")
+        },
+        content = function(file) {
+            write.csv(data.state.subset(), file)
         }
     )
 }

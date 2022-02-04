@@ -38,17 +38,33 @@ subset.data <- full.data %>%
          Question,
          DataValue,
          DataValueType,
+         DataValueUnit,
          StratificationCategory1,
-         Stratification1)
+         Stratification1,
+         YearStart)
 
 subset.data <- subset.data %>%
-  mutate(LocationAbbr = factor(LocationAbbr),
+  mutate(state = factor(LocationAbbr),
          Topic = factor(Topic),
          Question = factor(Question),
          DataValue = as.numeric(DataValue),
          DataValueType = factor(DataValueType),
+         DataValueUnit = factor(DataValueUnit),
          StratificationCategory1 = factor(StratificationCategory1),
-         Stratification1 = factor(Stratification1))
+         Stratification1 = factor(Stratification1),
+         YearStart = factor(YearStart))
+
+subset.data <- subset.data %>%
+  filter(DataValueType == "Crude Rate",
+         grepl("Mortality|mortality", Question),
+         StratificationCategory1 %in% c("Overall", "Gender"))
+
+subset.data <- subset.data %>%
+  mutate(DataValue = ifelse(DataValueUnit=="cases per 100,000",
+                            DataValue * 10,
+                            DataValue),
+         DataValueUnit = "cases per million")
+  
 ```
 
 # Save the Subset
@@ -61,6 +77,13 @@ write_csv(subset.data, "../app/cdi_data.csv")
 
 ```{r}
 saveRDS(subset.data, "../app/cdi_data.rds")
+```
+
+```{r}
+subset.data %>%
+  filter(Topic == "Alcohol") %>%
+  group_by(Topic, state, Stratification1) %>%
+  summarize(total = sum(DataValue, na.rm=TRUE))
 ```
 
 

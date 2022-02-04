@@ -19,40 +19,45 @@ ui <- fluidPage(
 
     # Application title
     titlePanel("Chronic Disease Indicators in the United States"),
-
-    # sidebar to select the chronic disease category
-    sidebarLayout(
-        sidebarPanel(
-            # select chronic disease
-            selectInput(inputId = "cdi",
-                        label = "Chronic Disease Category",
-                        choices = topic.list,
-                        selected = topic.list[1]),
-            
-            # select state
-            selectInput(inputId = "state",
-                        label = "State",
-                        choices = c("All", state.list),
-                        selected = "All")
-        ),
-
-        mainPanel(
-            # slider to select the year
-            sliderInput(inputId = "year",
-                        label = "Year",
-                        min = min.year,
-                        max = max.year,
-                        value = max.year,
-                        sep = ""),
-            
-            plotOutput("us.map"),
-            
-            tabsetPanel(
-                tabPanel("Plot", plotOutput("us.barplot")),
-                tabPanel("Table", DT::dataTableOutput("us.table"),
-                                  downloadButton("download.button"))
-            )
-        )
+    
+    fluidRow(
+             # Main user input panel
+             column(4, 
+                     # select chronic disease
+                     selectInput(inputId = "cdi",
+                                 label = "Chronic Disease Category",
+                                 choices = topic.list,
+                                 selected = topic.list[1]),
+                     # select state
+                     selectInput(inputId = "state",
+                                 label = "State",
+                                 choices = c("All", state.list),
+                                 selected = "All"),
+                     # chronic disease breakdown for the overall topic
+                     tableOutput("cdi.levels")),
+             # US map output
+             column(6, 
+                    # slider to select the year
+                    # centered it following these instructions:
+                    # https://stackoverflow.com/a/61818613
+                    div(style = "margin: auto; width: 50%",
+                        sliderInput(inputId = "year",
+                                    label = "Year",
+                                    min = min.year,
+                                    max = max.year,
+                                    value = max.year,
+                                    sep = "",
+                                    width = "100%")),
+                    
+                    plotOutput("us.map"),
+                    
+                    tabsetPanel(
+                        tabPanel("Plot", plotOutput("us.barplot")),
+                        tabPanel("Table", DT::dataTableOutput("us.table"),
+                                 downloadButton("download.button"))
+                    ))
+             
+             
     )
 )
 
@@ -82,7 +87,17 @@ server <- function(input, output) {
             
     })
     
-    # reactive to subset data to right topic
+    # reactive to get the right topic levels
+    data.cdi.levels <- reactive({
+        req(input$cdi)
+        data %>%
+            filter(Topic == input$cdi) %>%
+            select(Question) %>%
+            distinct() %>%
+            rename(`Chronic Disease` = Question)
+    })
+    
+    # reactive to subset data to right topic and state
     data.state.subset <- reactive({
         req(input$state, input$cdi)
         data %>% 
@@ -114,7 +129,8 @@ server <- function(input, output) {
             xlab("State") +
             ylab("Total Mortality per Million") +
             scale_fill_manual(values = c("darkgray", "darkred")) +
-            guides(fill = "none")
+            guides(fill = "none") + 
+            theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
     })
     
     # data table output
@@ -124,11 +140,15 @@ server <- function(input, output) {
                       rownames = FALSE)
     )
     
+    # data table output for chronic disease breakdown per topic
+    output$cdi.levels <- renderTable(data.cdi.levels())
+    
     # download button
     output$download.button <- downloadHandler(
         # from documentation
         filename = function() {
-            paste("movies_", str_replace_all(Sys.time(), ":|\ ", "_"), ".csv", sep = "")
+            paste(input$cdi, "_mortality_", str_replace_all(Sys.time(), ":|\ ", "_"), 
+                  ".csv", sep = "")
         },
         content = function(file) {
             write.csv(data.topic.subset.pretty(), file)

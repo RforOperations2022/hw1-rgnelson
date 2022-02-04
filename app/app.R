@@ -205,7 +205,7 @@ server <- function(input, output) {
     output$state.download.button <- downloadHandler(
         # from documentation
         filename = function() {
-            paste(input$cdi, "_state_mortality_", str_replace_all(Sys.time(), ":|\ ", "_"), 
+            paste(input$state, "_", input$cdi, "_mortality_", str_replace_all(Sys.time(), ":|\ ", "_"), 
                   ".csv", sep = "")
         },
         content = function(file) {

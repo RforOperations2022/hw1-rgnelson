@@ -148,6 +148,7 @@ server <- function(input, output) {
             ylab("Total Mortality per Million") +
             scale_fill_manual(values = c("darkgray", "darkred")) +
             guides(fill = "none") + 
+            ggtitle(paste0("Year: ", input$year)) + 
             theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
     })
     

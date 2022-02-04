@@ -58,7 +58,8 @@ subset.data <- subset.data %>%
   filter(DataValueType == "Crude Rate",
          grepl("Mortality|mortality", Question),
          StratificationCategory1 %in% c("Overall", "Gender"),
-         state != "US")
+         state != "US",
+         state != "DC")
 
 subset.data <- subset.data %>%
   mutate(DataValue = ifelse(DataValueUnit=="cases per 100,000",

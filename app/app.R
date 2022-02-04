@@ -76,6 +76,16 @@ ui <- fluidPage(
                    tabPanel("Table", DT::dataTableOutput("us.table"),
                             downloadButton("us.download.button"))
                ))
+    ),
+    
+    # citation for the data
+    br(),
+    fluidRow(
+        column(12,
+               h4("The data for this application is published by the CDC and 
+                  can be found at this link:"),
+               tags$a(href = "https://catalog.data.gov/dataset/u-s-chronic-disease-indicators-cdi",
+                      "https://catalog.data.gov/dataset/u-s-chronic-disease-indicators-cdi"))
     )
 )
 
